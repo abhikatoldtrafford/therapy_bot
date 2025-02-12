@@ -15,7 +15,7 @@ from openai import OpenAI
 API_BASE_URL = "http://localhost:8080"  # Your existing FastAPI port
 
 # Must be set in Streamlit secrets or replace with your own key
-OPENAI_API_KEY = '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'
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY)  # For Whisper STT
 
 ###################################
