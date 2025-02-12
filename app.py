@@ -24,7 +24,7 @@ app = FastAPI(title="NARM Therapy Assistant")
 # CONFIG
 #########################################################
 COMMON_VECTOR_STORE_ID = "vs_67a7a6bd68d48191a4f446ddeaec2e2b"
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "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")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MODEL_NAME = "gpt-4o"
 PORT = int(os.getenv("PORT", 8080))
 
