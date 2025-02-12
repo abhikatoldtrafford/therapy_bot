@@ -13,6 +13,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, WebSocket, W
 from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
 from starlette.websockets import WebSocketState
 import streamlit as st
+
 #########################################################
 # LOGGING & FASTAPI SETUP
 #########################################################
@@ -24,7 +25,7 @@ app = FastAPI(title="NARM Therapy Assistant")
 # CONFIG
 #########################################################
 COMMON_VECTOR_STORE_ID = "vs_67a7a6bd68d48191a4f446ddeaec2e2b"
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 MODEL_NAME = "gpt-4o"
 PORT = int(os.getenv("PORT", 8080))
 
