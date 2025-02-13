@@ -23,11 +23,14 @@ client = OpenAI(api_key=OPENAI_API_KEY)  # For Whisper STT
 ###################################
 # Session State Initialization
 ###################################
+if "assistant_id" not in st.session_state:
+    st.session_state["assistant_id"] = None
+if "thread_id" not in st.session_state:
+    st.session_state["thread_id"] = None
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
 if "last_transcript" not in st.session_state:
     st.session_state["last_transcript"] = None
-
 ###################################
 # Utility Functions
 ###################################
