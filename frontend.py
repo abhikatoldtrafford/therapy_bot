@@ -35,7 +35,7 @@ if "chat_history" not in st.session_state:
 def send_message_stream(prompt: str):
     """Send text message with streaming response using backend.chat()"""
     if not st.session_state["assistant_id"]:
-        st.error("⚠️ Please refress to state a new session.")
+        st.error("⚠️ Please refresh to start a new session.")
         return
 
     with st.chat_message("user"):
