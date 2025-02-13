@@ -248,15 +248,24 @@ else:
                 )
             transcript_text = transcription.text.strip()
             
-            # Ensure transcript is only pushed once until new audio is recorded
-            if transcript_text and st.session_state.get("last_transcript") != transcript_text:
-                st.session_state["chat_history"].append({
-                    "role": "user",
-                    "content": transcript_text,
-                    "has_audio": True
-                })
-                send_message_stream(transcript_text)
-                st.session_state["last_transcript"] = transcript_text  # Store last transcript to prevent duplicates
-            
+            if transcript_text:
+                # Only process if this transcript is new
+                if st.session_state.get("last_transcript") != transcript_text:
+                    st.session_state["chat_history"].append({
+                        "role": "user",
+                        "content": transcript_text,
+                        "has_audio": True
+                    })
+                    send_message_stream(transcript_text)
+                    st.session_state["last_transcript"] = transcript_text  # Store last transcript to prevent duplicates
+            else:
+                st.error("Transcription returned no text.")
+                st.session_state["last_transcript"] = ""  # Update state to avoid reprocessing
+
+        except Exception as e:
+            # Catch errors from the OpenAI transcription call
+            st.error("Error transcribing audio: " + str(e))
+            st.session_state["last_transcript"] = ""  # Update state so error won't cause repeat attempts
+
         finally:
             os.remove(tmp_filename)
