@@ -1,0 +1,5 @@
+openai
+websockets
+asyncio
+streamlit-audiorecorder==0.0.6
+streamlit==1.41.1
