@@ -25,17 +25,16 @@ client = OpenAI(api_key=OPENAI_API_KEY)  # For Whisper STT
 ###################################
 if "assistant_id" not in st.session_state:
     st.session_state["assistant_id"] = None
-if "thread_id" not in st.session_state:
     st.session_state["thread_id"] = None
-if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
+    st.session_state["last_transcript"] = None
 ###################################
 # Utility Functions
 ###################################
 def send_message_stream(prompt: str):
     """Send text message with streaming response using backend.chat()"""
     if not st.session_state["assistant_id"]:
-        st.error("⚠️ Please refresh to start a new session.")
+        st.error("⚠️ Please refresh to start a session.")
         return
 
     with st.chat_message("user"):
@@ -113,7 +112,7 @@ st.markdown("""
 ###################################
 # Session Initiation (Login Screen)
 ###################################
-if not global_context.get("assistant_id"):
+if not st.session_state["assistant_id"]:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("""
@@ -149,7 +148,7 @@ if not global_context.get("assistant_id"):
                 )
                 
                 if response["status"] == "success":
-                    st.rerun()
+                    st.session_state["assistant_id"] = response['assistant_id']
                 else:
                     st.error(f"❌ Failed to initialize session: {response.get('message', 'Unknown error')}")
     st.stop()
