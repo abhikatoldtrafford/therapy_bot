@@ -1,17 +1,17 @@
 import streamlit as st
 import time
 import os
+import asyncio
 from tempfile import NamedTemporaryFile
 from audiorecorder import audiorecorder
 from openai import OpenAI
-
+import base64
 from backend import (
     initiate_chat,
     chat,
     image_analysis,
     voice_analysis,
-    global_context,
-    MODEL_NAME
+    # Removed: global_context  <-- Not used
 )
 
 ###################################
@@ -28,11 +28,72 @@ if "assistant_id" not in st.session_state:
     st.session_state["thread_id"] = None
     st.session_state["chat_history"] = []
     st.session_state["last_transcript"] = None
+if "session_id" not in st.session_state:
+    st.session_state["session_id"] = None
+# Add a place to store "Listen Mode" in session state.
+if "listen_mode" not in st.session_state:
+    st.session_state["listen_mode"] = False
+
+
+###################################
+# NEW FUNCTION: stt (Text to Speech)
+###################################
+def stt(text: str):
+    """
+    Convert text to speech and immediately play it.
+    Uses OpenAI's TTS in streaming mode. Minimal changes:
+    we just write the file, then st.audio it.
+    """
+    # Create a temporary audio file
+    import uuid
+    out_file = f"tts_{uuid.uuid4().hex}.mp3"
+    
+    # Create TTS stream
+    response = client.audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input=text,
+    )
+    response.stream_to_file(out_file)
+
+    # Streamlit to play the audio
+    st.audio(out_file, format="audio/mp3")
+
+def speak_tts_autoplay_chunk(text_chunk: str):
+    """
+    Convert a partial text chunk to speech and immediately autoplay it,
+    without showing audio controls (hidden).
+    """
+    text_chunk = text_chunk.strip()
+    if not text_chunk:
+        return
+    out_file = "tts_chunk.wav"
+    # Make a TTS request specifying 'wav' so we can embed it easily
+    with client.audio.speech.with_streaming_response.create(model="tts-1",voice="alloy",input=text_chunk) as  response:
+        response.stream_to_file(out_file)
+    # Convert WAV to base64
+    with open(out_file, "rb") as f:
+        audio_bytes = f.read()
+    b64_audio = base64.b64encode(audio_bytes).decode("utf-8")
+
+    # Create hidden autoplay <audio> element
+    audio_html = f"""
+    <audio autoplay style="display:none;">
+        <source src="data:audio/wav;base64,{b64_audio}" type="audio/wav">
+    </audio>
+    """
+
+    st.markdown(audio_html, unsafe_allow_html=True)
+
 ###################################
 # Utility Functions
 ###################################
-def send_message_stream(prompt: str):
-    """Send text message with streaming response using backend.chat()"""
+async def send_message_stream(prompt: str):
+    """
+    Send text message with streaming response using backend.chat().
+
+    Converted to async so that it doesn't block the entire app run.
+    """
     if not st.session_state["assistant_id"]:
         st.error("⚠️ Please refresh to start a session.")
         return
@@ -45,7 +106,8 @@ def send_message_stream(prompt: str):
     message_placeholder.markdown("_💭 Thinking..._")
 
     try:
-        response = chat(prompt, stream=True)
+        # The call to 'chat' is executed in a background thread, so it doesn't block.
+        response = await asyncio.to_thread(chat, st.session_state["session_id"], prompt, True)
         
         if response["status"] != "success":
             message_placeholder.markdown(f"❌ Error: {response.get('message', 'Unknown error')}")
@@ -55,14 +117,20 @@ def send_message_stream(prompt: str):
         for chunk in response["stream"]:
             full_response += chunk
             message_placeholder.markdown(full_response + "▌")
-            time.sleep(0.01)
+            # (No logic change; only replaced time.sleep with asyncio.sleep)
+            await asyncio.sleep(0.01)
         
         message_placeholder.markdown(full_response)
         st.session_state["chat_history"].append({"role": "user", "content": prompt})
         st.session_state["chat_history"].append({"role": "assistant", "content": full_response})
         
+        # If "Listen Mode" is ON, speak the assistant's final text
+        if st.session_state["listen_mode"]:
+            speak_tts_autoplay_chunk(full_response)
+
     except Exception as e:
         message_placeholder.markdown(f"🚨 Error: {str(e)}")
+
 
 ###################################
 # UI Layout
@@ -149,6 +217,8 @@ if not st.session_state["assistant_id"]:
                 
                 if response["status"] == "success":
                     st.session_state["assistant_id"] = response['assistant_id']
+                    st.session_state["session_id"] = response['session_id']
+                    st.rerun()
                 else:
                     st.error(f"❌ Failed to initialize session: {response.get('message', 'Unknown error')}")
     st.stop()
@@ -156,116 +226,123 @@ if not st.session_state["assistant_id"]:
 ###################################
 # Main Chat Interface (Post-Login)
 ###################################
-else:
-    # Sidebar Tools
-    with st.sidebar:
-        st.header("🛠️ Tools")
+# Sidebar Tools
+with st.sidebar:
+    st.header("🛠️ Tools")
 
-        # Image Analysis
-        with st.expander("📸 Image Analysis"):
-            st.markdown('<div class="tool-card">', unsafe_allow_html=True)
-            img_prompt = st.text_input("Analysis Prompt", key="img_prompt")
-            image_file = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg"], key="image_file")
-            if st.button("🔍 Analyze Image", key="analyze_image"):
-                if image_file:
-                    with st.spinner("📷 Analyzing image..."):
-                        response = image_analysis(
-                            prompt=img_prompt,
-                            image_data=image_file.getvalue(),
-                            filename=image_file.name
-                        )
-                        
-                        if response["status"] == "success":
-                            st.session_state["chat_history"].append({
-                                "role": "user",
-                                "content": f"Image Analysis Request: {img_prompt}",
-                                "has_image": True
-                            })
-                            st.session_state["chat_history"].append({
-                                "role": "assistant",
-                                "content": response["response"][0]["content"]
-                            })
-                            st.rerun()
-                        else:
-                            st.error(f"❌ Image analysis failed: {response.get('message', 'Unknown error')}")
-                else:
-                    st.warning("⚠️ Please upload an image first")
-            st.markdown('</div>', unsafe_allow_html=True)
+    # Listen Mode Toggle
+    st.session_state["listen_mode"] = st.checkbox("Listen Mode", value=False)
 
-        # Audio Recorder
-        st.subheader("🎙️ Audio Recorder")
-        audio_data = audiorecorder("⏺️ Record", "⏸️ Stop")
-
-    # Chat Window Header
-    st.markdown("""
-    <div style="text-align: center; margin-bottom: 2rem;">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="200">
-            <rect width="300" height="150" fill="#ffffff"/>
-            <g transform="translate(115, 35)">
-                <circle cx="35" cy="35" r="25" fill="#6366F1"/>
-                <circle cx="80" cy="35" r="6" fill="#6366F1" opacity="0.8"/>
-                <circle cx="95" cy="35" r="4" fill="#6366F1" opacity="0.6"/>
-                <circle cx="105" cy="35" r="3" fill="#6366F1" opacity="0.4"/>
-            </g>
-            <text x="150" y="110" font-family="sans-serif" font-size="32" font-weight="500" text-anchor="middle" fill="#1E293B">NARM</text>
-            <text x="150" y="130" font-family="sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#6366F1">whisper</text>
-        </svg>
-        <h1 style='color: #1E293B; margin-top: 0.5rem;'>Therapy Chatbot</h1>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Display chat history
-    for msg in st.session_state["chat_history"]:
-        if msg["role"] == "assistant":
-            with st.chat_message("assistant"):
-                st.markdown(msg["content"])
-        else:
-            with st.chat_message("user"):
-                if msg.get("has_image"):
-                    st.write(f"Image Analysis Request: {msg['content']}")
-                    st.image(image_file, caption="Uploaded Image")
-                else:
-                    st.markdown(msg["content"])
-
-    # Chat Input at Bottom
-    user_input = st.chat_input("💬 Type your message and press Enter...")
-
-    # Text message handling
-    if user_input:
-        send_message_stream(user_input)
-
-    # Audio message handling
-    if audio_data and len(audio_data) > 0:
-        with NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-            audio_data.export(tmp.name, format="mp3")
-            tmp_filename = tmp.name
-
-        try:
-            with open(tmp_filename, "rb") as audio_file:
-                transcription = client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file
-                )
-            transcript_text = transcription.text.strip()
-            
-            if transcript_text:
-                # Only process if this transcript is new
-                if st.session_state.get("last_transcript") != transcript_text:
-                    st.session_state["chat_history"].append({
-                        "role": "user",
-                        "content": transcript_text,
-                        "has_audio": True
-                    })
-                    send_message_stream(transcript_text)
-                    st.session_state["last_transcript"] = transcript_text  # Store last transcript to prevent duplicates
+    # Image Analysis
+    with st.expander("📸 Image Analysis"):
+        st.markdown('<div class="tool-card">', unsafe_allow_html=True)
+        img_prompt = st.text_input("Analysis Prompt", key="img_prompt")
+        image_file = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg"], key="image_file")
+        if st.button("🔍 Analyze Image", key="analyze_image"):
+            if image_file:
+                with st.spinner("📷 Analyzing image..."):
+                    response = image_analysis(
+                        session_id=st.session_state["session_id"],
+                        prompt=img_prompt,
+                        image_data=image_file.getvalue(),
+                        filename=image_file.name
+                    )
+                    
+                    if response["status"] == "success":
+                        st.session_state["chat_history"].append({
+                            "role": "user",
+                            "content": f"Image Analysis Request: {img_prompt}",
+                            "has_image": True
+                        })
+                        st.session_state["chat_history"].append({
+                            "role": "assistant",
+                            "content": response["response"][0]["content"]
+                        })
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Image analysis failed: {response.get('message', 'Unknown error')}")
             else:
-                st.error("Transcription returned no text.")
-                st.session_state["last_transcript"] = ""  # Update state to avoid reprocessing
+                st.warning("⚠️ Please upload an image first")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        except Exception as e:
-            # Catch errors from the OpenAI transcription call
-            st.error("Error transcribing audio: " + str(e))
-            st.session_state["last_transcript"] = ""  # Update state so error won't cause repeat attempts
+    # Audio Recorder
+    st.subheader("🎙️ Audio Recorder")
+    audio_data = audiorecorder("⏺️ Record", "⏸️ Stop")
 
-        finally:
-            os.remove(tmp_filename)
+# Chat Window Header
+st.markdown("""
+<div style="text-align: center; margin-bottom: 2rem;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="200">
+        <rect width="300" height="150" fill="#ffffff"/>
+        <g transform="translate(115, 35)">
+            <circle cx="35" cy="35" r="25" fill="#6366F1"/>
+            <circle cx="80" cy="35" r="6" fill="#6366F1" opacity="0.8"/>
+            <circle cx="95" cy="35" r="4" fill="#6366F1" opacity="0.6"/>
+            <circle cx="105" cy="35" r="3" fill="#6366F1" opacity="0.4"/>
+        </g>
+        <text x="150" y="110" font-family="sans-serif" font-size="32" font-weight="500" text-anchor="middle" fill="#1E293B">NARM</text>
+        <text x="150" y="130" font-family="sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#6366F1">whisper</text>
+    </svg>
+    <h1 style='color: #1E293B; margin-top: 0.5rem;'>Therapy Chatbot</h1>
+</div>
+""", unsafe_allow_html=True)
+
+# Display chat history
+for msg in st.session_state["chat_history"]:
+    if msg["role"] == "assistant":
+        with st.chat_message("assistant"):
+            st.markdown(msg["content"])
+    else:
+        with st.chat_message("user"):
+            if msg.get("has_image"):
+                st.write(f"Image Analysis Request: {msg['content']}")
+                # Just re-displaying the last uploaded image; minimal approach
+                st.image(image_file, caption="Uploaded Image")
+            else:
+                st.markdown(msg["content"])
+
+# Chat Input at Bottom
+user_input = st.chat_input("💬 Type your message and press Enter...")
+
+# Text message handling
+if user_input:
+    asyncio.run(send_message_stream(user_input))
+
+# Audio message handling
+if audio_data and len(audio_data) > 0:
+    original_listen_mode = st.session_state["listen_mode"]
+    st.session_state["listen_mode"] = False
+    with NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+        audio_data.export(tmp.name, format="mp3")
+        tmp_filename = tmp.name
+
+    try:
+        with open(tmp_filename, "rb") as audio_file:
+            transcription = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file
+            )
+        transcript_text = transcription.text.strip()
+        st.session_state["listen_mode"] = original_listen_mode
+        if transcript_text:
+            # Only process if this transcript is new
+            if st.session_state.get("last_transcript") != transcript_text:
+                st.session_state["chat_history"].append({
+                    "role": "user",
+                    "content": transcript_text,
+                    "has_audio": True
+                })
+                asyncio.run(send_message_stream(transcript_text))
+                st.session_state["last_transcript"] = transcript_text  # Store last transcript to prevent duplicates
+        else:
+            st.error("Transcription returned no text.")
+            st.session_state["last_transcript"] = ""  # Update state to avoid reprocessing
+
+    except Exception as e:
+        # Catch errors from the OpenAI transcription call
+        st.error("Error transcribing audio: " + str(e))
+        st.session_state["last_transcript"] = ""  # Update state so error won't cause repeat attempts
+
+    finally:
+        os.remove(tmp_filename)
+        st.session_state["listen_mode"] = True
