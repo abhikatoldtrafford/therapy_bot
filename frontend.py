@@ -327,13 +327,13 @@ if audio_data and len(audio_data) > 0:
         if transcript_text:
             # Only process if this transcript is new
             if st.session_state.get("last_transcript") != transcript_text:
+                st.session_state["last_transcript"] = transcript_text
                 st.session_state["chat_history"].append({
                     "role": "user",
                     "content": transcript_text,
                     "has_audio": True
                 })
                 asyncio.run(send_message_stream(transcript_text))
-                st.session_state["last_transcript"] = transcript_text  # Store last transcript to prevent duplicates
         else:
             st.error("Transcription returned no text.")
             st.session_state["last_transcript"] = ""  # Update state to avoid reprocessing
