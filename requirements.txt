@@ -5,3 +5,4 @@ streamlit-audiorecorder==0.0.6
 streamlit==1.41.1
 ffmpeg-python
 pydub
+streamlit_extras
