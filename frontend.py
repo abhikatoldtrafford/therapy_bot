@@ -13,7 +13,7 @@ from backend import (
     voice_analysis,
     # Removed: global_context  <-- Not used
 )
-
+from streamlit_extras.bottom_container import bottom
 ###################################
 # Configuration
 ###################################
@@ -103,27 +103,28 @@ async def send_message_stream(prompt: str):
 
     assistant_message = st.chat_message("assistant")
     message_placeholder = assistant_message.empty()
-    message_placeholder.markdown("_💭 Thinking..._")
+    # message_placeholder.markdown("_💭 Thinking..._")
 
     try:
         # The call to 'chat' is executed in a background thread, so it doesn't block.
-        response = await asyncio.to_thread(chat, st.session_state["session_id"], prompt, True)
-        
-        if response["status"] != "success":
-            message_placeholder.markdown(f"❌ Error: {response.get('message', 'Unknown error')}")
-            return
+        with st.spinner("Typing..."):
+            response = await asyncio.to_thread(chat, st.session_state["session_id"], prompt, True)
+            
+            if response["status"] != "success":
+                message_placeholder.markdown(f"❌ Error: {response.get('message', 'Unknown error')}")
+                return
 
-        full_response = ""
-        for chunk in response["stream"]:
-            full_response += chunk
-            message_placeholder.markdown(full_response + "▌")
-            # (No logic change; only replaced time.sleep with asyncio.sleep)
-            await asyncio.sleep(0.01)
-        
+            full_response = ""
+            for chunk in response["stream"]:
+                full_response += chunk
+                message_placeholder.markdown(full_response + "▌")
+                # (No logic change; only replaced time.sleep with asyncio.sleep)
+                await asyncio.sleep(0.001)
+            
         message_placeholder.markdown(full_response)
         st.session_state["chat_history"].append({"role": "user", "content": prompt})
         st.session_state["chat_history"].append({"role": "assistant", "content": full_response})
-        
+            
         # If "Listen Mode" is ON, speak the assistant's final text
         if st.session_state["listen_mode"]:
             speak_tts_autoplay_chunk(full_response)
@@ -135,7 +136,7 @@ async def send_message_stream(prompt: str):
 ###################################
 # UI Layout
 ###################################
-st.set_page_config(page_title="NARM Therapy Assistant", layout="wide")
+st.set_page_config(page_title="ARUNYA AI Therapybot")
 
 # Custom CSS
 st.markdown("""
@@ -184,43 +185,76 @@ if not st.session_state["assistant_id"]:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("""
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="200">
-                    <rect width="300" height="150" fill="#ffffff"/>
-                    <g transform="translate(115, 35)">
-                        <circle cx="35" cy="35" r="25" fill="#6366F1"/>
-                        <circle cx="80" cy="35" r="6" fill="#6366F1" opacity="0.8"/>
-                        <circle cx="95" cy="35" r="4" fill="#6366F1" opacity="0.6"/>
-                        <circle cx="105" cy="35" r="3" fill="#6366F1" opacity="0.4"/>
-                    </g>
-                    <text x="150" y="110" font-family="sans-serif" font-size="32" font-weight="500" text-anchor="middle" fill="#1E293B">NARM</text>
-                    <text x="150" y="130" font-family="sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#6366F1">whisper</text>
-                </svg>
-                <h1 style='color: #1E293B; margin-top: 0.5rem;'>Therapy Session Setup</h1>
+            <div style="
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                margin-bottom: 2rem;
+                margin-left: -150px;
+                padding: 1rem 2rem;
+                background: #F9FAFB;
+                border-radius: 10px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            ">
+                <div style="flex-shrink: 0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="200">
+                        <rect width="300" height="150" fill="#ffffff"/>
+                        <g transform="translate(115, 35)">
+                            <circle cx="35" cy="35" r="25" fill="#6366F1"/>
+                            <circle cx="80" cy="35" r="6" fill="#6366F1" opacity="0.8"/>
+                            <circle cx="95" cy="35" r="4" fill="#6366F1" opacity="0.6"/>
+                            <circle cx="105" cy="35" r="3" fill="#6366F1" opacity="0.4"/>
+                        </g>
+                        <text x="150" y="110" font-family="sans-serif" font-size="32" font-weight="500" text-anchor="middle" fill="#1E293B">NARM</text>
+                        <text x="150" y="130" font-family="sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#6366F1">whisper</text>
+                    </svg>
+                </div>
+                <div style="margin-left: 20px; text-align: left;">
+                    <h1 style="color: #1E293B; margin: 0; font-size: 36px; font-weight: bold; white-space: nowrap;">
+                        Therapy Assistant
+                    </h1>
+                </div>
             </div>
-        """, unsafe_allow_html=True)
-        with st.form("session_init_form"):
-            name = st.text_input("Full Name")
-            email = st.text_input("Email")
-            focus_today = st.text_area("Today's Focus")
-            desired_outcome = st.text_area("Desired Outcome")
-            current_challenges = st.text_area("Current Challenges")
+            """, unsafe_allow_html=True)
 
-            if st.form_submit_button("🚀 Start Session"):
-                response = initiate_chat(
-                    name=name,
-                    email=email,
-                    focus_today=focus_today,
-                    desired_outcome=desired_outcome,
-                    current_challenges=current_challenges
-                )
-                
-                if response["status"] == "success":
-                    st.session_state["assistant_id"] = response['assistant_id']
-                    st.session_state["session_id"] = response['session_id']
-                    st.rerun()
-                else:
-                    st.error(f"❌ Failed to initialize session: {response.get('message', 'Unknown error')}")
+    with st.form("session_init_form"):
+        st.markdown("""
+            <h2 style='text-align: center; color: #1E293B; margin-bottom: 10px;'>
+                🚀 Start Your Therapy Session
+            </h2>
+            <hr style="border: 1px solid #6366F1; margin-bottom: 20px;">
+        """, unsafe_allow_html=True)
+        
+        # Two-column layout for Name & Email with better spacing
+        col1, col2 = st.columns([1, 1])  
+        with col1:
+            name = st.text_input("🧑 **Full Name**", placeholder="Enter your full name")  
+        with col2:
+            email = st.text_input("📧 **Email**", placeholder="Enter your email")
+
+        focus_today = st.text_input("🎯 **Today's Focus**", placeholder="What do you want to focus on?")
+        desired_outcome = st.text_input("🌟 **Desired Outcome**", placeholder="What result are you hoping for?")
+        current_challenges = st.text_input("⚠️ **Current Challenges**", placeholder="What are you struggling with?")
+
+        st.markdown("<br>", unsafe_allow_html=True)  # Adds space before button
+
+        # Handle Form Submission
+        if st.form_submit_button(label = 'Initiate Session',use_container_width=True, type = 'primary'):
+            response = initiate_chat(
+                name=name,
+                email=email,
+                focus_today=focus_today,
+                desired_outcome=desired_outcome,
+                current_challenges=current_challenges
+            )
+            
+            if response["status"] == "success":
+                st.session_state["assistant_id"] = response['assistant_id']
+                st.session_state["session_id"] = response['session_id']
+                st.rerun()
+            else:
+                st.error(f"❌ Failed to initialize session: {response.get('message', 'Unknown error')}")
+
     st.stop()
 
 ###################################
@@ -229,11 +263,6 @@ if not st.session_state["assistant_id"]:
 # Sidebar Tools
 with st.sidebar:
     st.header("🛠️ Tools")
-
-    # Listen Mode Toggle
-    st.session_state["listen_mode"] = st.checkbox("Listen Mode", value=False)
-
-    # Image Analysis
     with st.expander("📸 Image Analysis"):
         st.markdown('<div class="tool-card">', unsafe_allow_html=True)
         img_prompt = st.text_input("Analysis Prompt", key="img_prompt")
@@ -266,24 +295,28 @@ with st.sidebar:
         st.markdown('</div>', unsafe_allow_html=True)
 
     # Audio Recorder
-    st.subheader("🎙️ Audio Recorder")
-    audio_data = audiorecorder("⏺️ Record", "⏸️ Stop")
+    # st.subheader("🎙️ Audio Recorder")
+    #audio_data = audiorecorder("⏺️ Record", "⏸️ Stop")
 
 # Chat Window Header
 st.markdown("""
-<div style="text-align: center; margin-bottom: 2rem;">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="200">
-        <rect width="300" height="150" fill="#ffffff"/>
-        <g transform="translate(115, 35)">
-            <circle cx="35" cy="35" r="25" fill="#6366F1"/>
-            <circle cx="80" cy="35" r="6" fill="#6366F1" opacity="0.8"/>
-            <circle cx="95" cy="35" r="4" fill="#6366F1" opacity="0.6"/>
-            <circle cx="105" cy="35" r="3" fill="#6366F1" opacity="0.4"/>
-        </g>
-        <text x="150" y="110" font-family="sans-serif" font-size="32" font-weight="500" text-anchor="middle" fill="#1E293B">NARM</text>
-        <text x="150" y="130" font-family="sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#6366F1">whisper</text>
-    </svg>
-    <h1 style='color: #1E293B; margin-top: 0.5rem;'>Therapy Chatbot</h1>
+<div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 2rem;">
+    <div style="flex-shrink: 0;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="200">
+            <rect width="300" height="150" fill="#ffffff"/>
+            <g transform="translate(115, 35)">
+                <circle cx="35" cy="35" r="25" fill="#6366F1"/>
+                <circle cx="80" cy="35" r="6" fill="#6366F1" opacity="0.8"/>
+                <circle cx="95" cy="35" r="4" fill="#6366F1" opacity="0.6"/>
+                <circle cx="105" cy="35" r="3" fill="#6366F1" opacity="0.4"/>
+            </g>
+            <text x="150" y="110" font-family="sans-serif" font-size="32" font-weight="500" text-anchor="middle" fill="#1E293B">NARM</text>
+            <text x="150" y="130" font-family="sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#6366F1">whisper</text>
+        </svg>
+    </div>
+    <div style="margin-left: 20px; text-align: left;">
+        <h1 style="color: #1E293B; margin: 0; font-size: 36px; font-weight: bold;">AI Therapeutic Assist</h1>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -301,8 +334,20 @@ for msg in st.session_state["chat_history"]:
             else:
                 st.markdown(msg["content"])
 
-# Chat Input at Bottom
-user_input = st.chat_input("💬 Type your message and press Enter...")
+
+
+with bottom():
+    col1, col2, col3 = st.columns([1, 5, 2])  # Adjust column widths as needed
+
+    with col2:
+        user_input = st.chat_input("💬 Type your message and press Enter...")
+
+    with col3:
+        audio_data = audiorecorder("🎙️Record", "⏹️Stop")
+
+    with col1:
+        st.session_state["listen_mode"] = st.checkbox("📢", value=False)
+
 
 # Text message handling
 if user_input:
