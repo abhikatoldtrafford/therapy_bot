@@ -32,7 +32,7 @@ if "session_id" not in st.session_state:
     st.session_state["session_id"] = None
 # Add a place to store "Listen Mode" in session state.
 if "listen_mode" not in st.session_state:
-    st.session_state["listen_mode"] = False
+    st.session_state["listen_mode"] = True
 
 
 ###################################
@@ -103,7 +103,7 @@ async def send_message_stream(prompt: str):
 
     assistant_message = st.chat_message("assistant")
     message_placeholder = assistant_message.empty()
-    # message_placeholder.markdown("_💭 Thinking..._")
+    #message_placeholder.markdown(f"**ARUNYA AI thinking...**  \n")
 
     try:
         # The call to 'chat' is executed in a background thread, so it doesn't block.
@@ -204,7 +204,8 @@ if not st.session_state["assistant_id"]:
                 display: flex;
                 align-items: flex-start;
                 justify-content: center;
-                margin-bottom: 20px;
+                margin-top: 0;
+                margin-bottom: 5px;
             ">
                 <div class="form-logo" style="flex-shrink: 0;">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="300">
@@ -220,7 +221,7 @@ if not st.session_state["assistant_id"]:
                     </svg>
                 </div>
             </div>
-            <hr style="border: 1px solid #6366F1; margin-bottom: 20px;">
+            <h2 style="text-align:center; color:#6366F1;">ARUNYA AI Therapybot</h2>
         """, unsafe_allow_html=True)
 
         # Two-column layout for Name & Email with better spacing
@@ -319,7 +320,8 @@ st.markdown("""
                 display: flex;
                 align-items: flex-start;
                 justify-content: center;
-                margin-bottom: 20px;
+                margin-top: 0;
+                margin-bottom: 5px;
             ">
                 <div class="form-logo" style="flex-shrink: 0;">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="300">
@@ -335,8 +337,8 @@ st.markdown("""
                     </svg>
                 </div>
             </div>
-            <hr style="border: 1px solid #6366F1; margin-bottom: 20px;">
-""", unsafe_allow_html=True)
+            <h2 style="text-align:center; color:#6366F1;">ARUNYA AI Therapybot</h2>
+        """, unsafe_allow_html=True)
 # Display chat history
 for msg in st.session_state["chat_history"]:
     if msg["role"] == "assistant":
@@ -360,10 +362,10 @@ with bottom():
         user_input = st.chat_input("💬 Type your message and press Enter...")
 
     with col3:
-        audio_data = audiorecorder("🎙️Record", "⏹️Stop")
+        audio_data = audiorecorder("🎙️Record", "⏹️Stop", custom_style={'color': 'red'})
 
     with col1:
-        st.session_state["listen_mode"] = st.checkbox("Talk", value=False)
+        st.session_state["listen_mode"] = st.checkbox("📢Talk", value=True)
 
 
 # Text message handling
