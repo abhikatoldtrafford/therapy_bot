@@ -211,7 +211,7 @@ if not st.session_state["assistant_id"]:
                 </div>
                 <div style="margin-left: 20px; text-align: left;">
                     <h1 style="color: #1E293B; margin: 0; font-size: 36px; font-weight: bold; white-space: nowrap;">
-                        Therapy Assistant
+                        Therapy Bot
                     </h1>
                 </div>
             </div>
