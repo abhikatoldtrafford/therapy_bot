@@ -191,10 +191,11 @@ if not st.session_state["assistant_id"]:
                 justify-content: flex-start;
                 margin-bottom: 2rem;
                 margin-left: -150px;
-                padding: 1rem 2rem;
+                padding: 1rem 1.5rem;
                 background: #F9FAFB;
                 border-radius: 10px;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+                max-width: 80%;
             ">
                 <div style="flex-shrink: 0;">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="200">
@@ -209,9 +210,9 @@ if not st.session_state["assistant_id"]:
                         <text x="150" y="130" font-family="sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#6366F1">whisper</text>
                     </svg>
                 </div>
-                <div style="margin-left: 20px; text-align: left;">
+                <div style="margin-left: 10px; text-align: left;">
                     <h1 style="color: #1E293B; margin: 0; font-size: 36px; font-weight: bold; white-space: nowrap;">
-                        Therapy Bot
+                        Therapy Assistant
                     </h1>
                 </div>
             </div>
