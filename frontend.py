@@ -185,7 +185,25 @@ if not st.session_state["assistant_id"]:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("""
-            <div style="
+            <style>
+                @media (max-width: 768px) { /* Mobile screens */
+                    .header-container {
+                        flex-direction: column; /* Stack logo and text */
+                        align-items: center;
+                        text-align: center;
+                        margin-left: 0px !important; /* Remove negative margin on mobile */
+                    }
+                    .header-logo {
+                        width: 150px !important; /* Reduce logo size */
+                    }
+                    .header-title {
+                        margin-left: 0px !important; /* Center text */
+                        font-size: 28px !important; /* Slightly smaller text */
+                    }
+                }
+            </style>
+
+            <div class="header-container" style="
                 display: flex;
                 align-items: center;
                 justify-content: flex-start;
@@ -197,7 +215,7 @@ if not st.session_state["assistant_id"]:
                 box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 max-width: 80%;
             ">
-                <div style="flex-shrink: 0;">
+                <div class="header-logo" style="flex-shrink: 0;">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="200">
                         <rect width="300" height="150" fill="#ffffff"/>
                         <g transform="translate(115, 35)">
@@ -210,7 +228,7 @@ if not st.session_state["assistant_id"]:
                         <text x="150" y="130" font-family="sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#6366F1">whisper</text>
                     </svg>
                 </div>
-                <div style="margin-left: 10px; text-align: left;">
+                <div class="header-title" style="margin-left: 10px; text-align: left;">
                     <h1 style="color: #1E293B; margin: 0; font-size: 36px; font-weight: bold; white-space: nowrap;">
                         Therapy Assistant
                     </h1>
@@ -218,10 +236,11 @@ if not st.session_state["assistant_id"]:
             </div>
             """, unsafe_allow_html=True)
 
+
     with st.form("session_init_form"):
         st.markdown("""
             <h2 style='text-align: center; color: #1E293B; margin-bottom: 10px;'>
-                🚀 Start Your Therapy Session
+                🚀 About You!
             </h2>
             <hr style="border: 1px solid #6366F1; margin-bottom: 20px;">
         """, unsafe_allow_html=True)
