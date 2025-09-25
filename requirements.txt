@@ -1,8 +1,8 @@
-openai==1.60.0
+openai
 websockets
 asyncio
-streamlit-audiorecorder==0.0.6
-streamlit==1.41.1
+streamlit-audiorecorder
+streamlit
 ffmpeg-python
 pydub
 streamlit_extras
