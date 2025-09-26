@@ -1,6 +1,6 @@
 {
   "openai": {
-    "api_key": "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",
+    "api_key": "sk-proj-...",
     "model": "gpt-4.1-mini",
     "temperature": 0.7,
     "max_tokens": 500
